@@ -7,7 +7,6 @@ from src.server.instance import server
 from src.utils.mine_code import *
 
 app, api = server.app, server.api
-app.config["UPLOAD_EXTENSIONS"] = [".xlsx"]
 
 
 class Upload(Resource):
@@ -44,7 +43,7 @@ class Upload(Resource):
 
         if args["gender"]["all"]:
             result["Gênero dos clientes"] = genero_predominante(
-                df_clientes, df_pedidos)
+                df_clientes, df_pedidos, somenteEntregues=True)
 
         if args["identification"]["ageGroup"]:
             result["Faixa Etária"] = faixa_etaria(df_clientes)

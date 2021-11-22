@@ -5,6 +5,20 @@ from src.utils.format import *
 from src.utils.date import *
 
 
+def get_response(dados):
+    response = []
+    for key, value in dados.items():
+        if key == "F": key = "Mulheres"
+        elif key == "M": key = "Homens"
+
+        response.append({
+            'name': key,
+            'value': value
+        })
+
+    return response
+
+
 def pedidos_por_estado(dados, somenteEntregues=False):
     '''
     RF__01 Quantidade de pedidos por estado   OK
@@ -15,7 +29,7 @@ def pedidos_por_estado(dados, somenteEntregues=False):
 
     dados = dados[dic.estado_destino].value_counts()
 
-    return series_to_json(dados)
+    return get_response(dados)
 
 
 def pedidos_por_cidade(dados, somenteEntregues=False):
@@ -28,7 +42,7 @@ def pedidos_por_cidade(dados, somenteEntregues=False):
 
     dados = dados[dic.cidade_destino].value_counts().head(10)
 
-    return series_to_json(dados)
+    return get_response(dados)
 
 
 def taxa_reincidencia(dados, clientes=False):
@@ -39,17 +53,27 @@ def taxa_reincidencia(dados, clientes=False):
     Exemplo json: {"nome" : QtdCompras}
     '''
     resultado = dados[dic.destinatario].value_counts()
-    resultado_counts = resultado.value_counts()
 
     if clientes:
-        response = resultado.to_json()
-        response = json.loads(response)
+        response = get_response(resultado)
 
     else:
-        response = {
-            "Novos clientes": int(resultado_counts[1]),
-            "Reincidentes": int(len(resultado) - resultado_counts[1])
+        novos = {
+            "name": "Clientes novos",
+            "value": 0
         }
+        reincidentes = {
+            "name": "Clientes reincidentes",
+            "value": 0
+        }
+
+        for k, v in resultado.items():
+            if v == 1:
+                novos["value"] += 1
+            else:
+                reincidentes["value"] += 1
+
+        response = [novos, reincidentes]
 
     return response
 
@@ -61,44 +85,14 @@ def genero_predominante(planilhaClientes, planilhaPedidos, apenasCadastrados=Fal
     ADICIONAR: Somente pedidos já entregues
     '''
 
-    publicoMasculino = {'total': 0}
-    publicoFeminino = {'total': 0}
+    if somenteEntregues:
+        pedidosEntregues = planilhaPedidos.loc[planilhaPedidos[dic.status] == dic.entregue]
+        clientes = planilhaClientes.loc[planilhaClientes[dic.id].isin(pedidosEntregues[dic.cliente_id])]
+        return get_response(clientes[dic.genero].value_counts())
 
-    # Contagem de clientes cadastrados Masculinos e Femininos.
-    for cliente in range(len(planilhaClientes)):
-        if planilhaClientes[dic.genero][cliente] == 'M':
-            chave = planilhaClientes[dic.id][cliente]
-            publicoMasculino[chave] = 'M'
-            publicoMasculino['total'] += 1
-
-        elif planilhaClientes[dic.genero][cliente] == 'F':
-            chave = planilhaClientes[dic.id][cliente]
-            publicoFeminino[chave] = 'F'
-            publicoFeminino['total'] += 1
-
-    if apenasCadastrados:
-        return {
-            'Homens': publicoMasculino['total'],
-            'Mulheres': publicoFeminino['total']
-        }
-
-    # Contagem por gênero de clientes que realizaram pedido.
-    M_Total = 0
-    F_Total = 0
-
-    for pedido in range(len(planilhaPedidos)):
-        status = planilhaPedidos[dic.status][pedido]
-        if somenteEntregues == True and status != dic.entregue:
-            pass
-
-        else:
-            id = planilhaPedidos[dic.cliente_id][pedido]
-            if id in publicoMasculino.keys():
-                M_Total += 1
-            elif id in publicoFeminino.keys():
-                F_Total += 1
-
-    return {'Mulheres': F_Total, 'Homens': M_Total}
+    else:
+        planilhaClientes = planilhaClientes[dic.genero].value_counts()
+        return get_response(planilhaClientes)
 
 
 def faixa_etaria(planilhaClientes, passo=5):
@@ -135,7 +129,7 @@ def faixa_etaria(planilhaClientes, passo=5):
 
             response[chave] += 1
 
-    return response
+    return get_response(response)
 
 
 def cadastros_periodo(planilhaClientes, dataInicial=None, dataFinal=None, tempo="Meses"):
@@ -166,7 +160,7 @@ def cadastros_periodo(planilhaClientes, dataInicial=None, dataFinal=None, tempo=
             if (dataCriacao in response) == False:
                 response[dataCriacao] = 0
             response[dataCriacao] += 1
-    return response
+    return get_response(response)
 
 
 def faturamento_periodo(planilhaPedidos, tempo='Dias', dataInicial=None, dataFinal=None):
@@ -211,12 +205,17 @@ def faturamento_periodo(planilhaPedidos, tempo='Dias', dataInicial=None, dataFin
 
                 response[chave] += valorPedido
 
-    return response
+    return get_response(response)
+
+
+'''
+RF_08 
+'''
 
 
 def cancelamentos_periodo(planilhaPedidos, dataInicial=None, dataFinal=None, tempo="Meses"):
     '''
-    RF_08 Cancelamento por período
+    RF_09 Cancelamento por período
     '''
     dataInicial = dataInicial.split('T')[0]
     dataFinal = dataFinal.split('T')[0]
@@ -240,12 +239,7 @@ def cancelamentos_periodo(planilhaPedidos, dataInicial=None, dataFinal=None, tem
                 if (dataCriacao in response) == False:
                     response[dataCriacao] = 0
                 response[dataCriacao] += 1
-    return response
-
-
-'''
-RF_09 
-'''
+    return get_response(response)
 
 
 def metodo_pagamento_aprovacoes(dados):
@@ -266,7 +260,7 @@ def metodo_pagamento_aprovacoes(dados):
             "aprovados": qtdAprovados
         }
 
-    return infoPagamentos
+    return get_response(infoPagamentos)
 
 
 def metodo_envio_preferencia(planilhaPedidos):
@@ -285,4 +279,4 @@ def metodo_envio_preferencia(planilhaPedidos):
                 response[metodoEnvio] = 0
 
             response[metodoEnvio] += 1
-    return response
+    return get_response(response)

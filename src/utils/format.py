@@ -2,10 +2,18 @@ import json
 
 
 def series_to_json(dados):
-    result = dados.to_json(orient="columns", force_ascii=False)
-    parsed = json.loads(result)
+    response = []
+    for key, value in dados.items():
+        response.append({
+            'name': key,
+            'value': value
+        })
 
-    return parsed
+    return response
+    # result = dados.to_json(orient="columns", force_ascii=False)
+    # parsed = json.loads(result)
+
+    # return parsed
 
 
 def dict_to_json(dicionario):
