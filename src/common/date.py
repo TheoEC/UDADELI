@@ -38,35 +38,30 @@ def entre_datas(dataInicio, dataVerificar, dataLimite=None, tempo='Dias'):
     response = False
     if (dataLimite == None):
         if(tempo == 'Dias'):
-            inicio = dt.strptime(dataInicio,    "%Y-%m-%d")
+            inicio = dt.strptime(dataInicio, "%Y-%m-%d")
             verificar = dt.strptime(dataVerificar, "%Y-%m-%d")
-            response = (inicio <= verificar)
         elif(tempo == 'Meses'):
-            inicio = dt.strptime(dataInicio,    "%Y-%m")
+            inicio = dt.strptime(dataInicio, "%Y-%m")
             verificar = dt.strptime(dataVerificar, "%Y-%m")
-            response = (inicio <= verificar)
         elif tempo == 'Anos':
-            inicio = dt.strptime(dataInicio,    "%Y")
+            inicio = dt.strptime(dataInicio, "%Y")
             verificar = dt.strptime(dataVerificar, "%Y")
-            response = (inicio <= verificar)
+        response = (inicio <= verificar)
 
     else:
+        dataLimite = dataLimite.replace('/', '-')
         if tempo == 'Dias':
-            dataLimite = dataLimite.replace('/', '-')
-            inicio = dt.strptime(dataInicio,    "%Y-%m-%d")
+            inicio = dt.strptime(dataInicio, "%Y-%m-%d")
             verificar = dt.strptime(dataVerificar, "%Y-%m-%d")
-            limite = dt.strptime(dataLimite,    "%Y-%m-%d")
-            response = (inicio <= verificar) and (verificar <= limite)
+            limite = dt.strptime(dataLimite, "%Y-%m-%d")
         elif tempo == 'Meses':
-            dataLimite = dataLimite.replace('/', '-')
-            inicio = dt.strptime(dataInicio,    "%Y-%m")
+            inicio = dt.strptime(dataInicio, "%Y-%m")
             verificar = dt.strptime(dataVerificar, "%Y-%m")
-            limite = dt.strptime(dataLimite,    "%Y-%m")
-            response = (inicio <= verificar) and (verificar <= limite)
+            limite = dt.strptime(dataLimite, "%Y-%m")
         elif tempo == 'Anos':
-            inicio = dt.strptime(dataInicio,    "%Y")
+            inicio = dt.strptime(dataInicio, "%Y")
             verificar = dt.strptime(dataVerificar, "%Y")
-            limite = dt.strptime(dataLimite,    "%Y")
-            response = (inicio <= verificar) and (verificar <= limite)
+            limite = dt.strptime(dataLimite, "%Y")
+        response = (inicio <= verificar) and (verificar <= limite)
 
     return response
