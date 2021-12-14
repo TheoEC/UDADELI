@@ -4,7 +4,6 @@ import pandas as pd
 from flask import abort, request, session
 from flask_restful import Resource
 from src.server.instance import server
-from src.common.mine_code import *
 
 app = server.app
 

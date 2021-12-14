@@ -1,10 +1,11 @@
-# from dotenv import load_dotenv
-# import os
+import os
+import binascii
 import redis
 from datetime import timedelta
 
 class ApplicationConfig:	
-    SECRET_KEY = "mcvnlnafophaojrngqkrngophnfokjnbskdvcnoj"
+    # SECRET_KEY = binascii.hexlify(os.urandom(24))
+    SECRET_KEY = "gfhaikjvckçalcjhçlkahdap"
 	
     SESSION_TYPE = "redis"
     SESSION_PERMANENT = False
