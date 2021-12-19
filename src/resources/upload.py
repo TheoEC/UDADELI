@@ -1,13 +1,11 @@
 import os
 
 import pandas as pd
-from flask import abort, request, session
+from flask import abort, current_app, request, session
 from flask_restful import Resource
-from src.server.instance import server
 
-app = server.app
 
-class Upload(Resource):
+class UploadResource(Resource):
     def post(self):
         if "file" not in request.files:
             return "No file uploaded"
@@ -17,8 +15,8 @@ class Upload(Resource):
 
         if filename != "":
             file_ext = os.path.splitext(filename)[1]
-            if file_ext not in app.config["UPLOAD_EXTENSIONS"]:
-                abort(400, { "message": "File must be .xlsx" })
+            if file_ext not in current_app.config["UPLOAD_EXTENSIONS"]:
+                abort(400, {"message": "File must be .xlsx"})
 
         df = pd.read_excel(file)
 
@@ -27,5 +25,4 @@ class Upload(Resource):
         else:
             session['clientes-df'] = df.to_dict()
 
-
-        return { "message": "Data uploaded" }, 200
+        return {"message": "Data uploaded"}, 200
