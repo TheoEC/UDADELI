@@ -17,7 +17,7 @@ def create_app(config_name):
     app.config.from_object(env_config[config_name])
     app.register_blueprint(api_bp, url_prefix='/api/v1')
 
-    CORS(app)
+    CORS(app, supports_credentials=True)
     Session(app)
     # Swagger(app)
 
