@@ -3,6 +3,7 @@ import pandas as pd
 from src.common.dicionario import Dicionario as dic
 from src.common.date import *
 
+
 def get_response(titulo, tipo_grafico, dados):
     if type(dados) != dict:
         dados = dados.to_dict()
@@ -21,7 +22,113 @@ def get_response(titulo, tipo_grafico, dados):
     }
 
 
-def pedidos_por_estado(dados: pd.DataFrame, somenteEntregues: bool = False):
+def genero_predominante(
+    planilhaClientes: pd.DataFrame,
+    planilhaPedidos: pd.DataFrame = None,
+    apenasCadastrados: bool = False,
+    somenteEntregues: bool = False,
+    **kwargs
+):
+    '''
+    RF_04 Gênero predominante
+    Quantidade de clientes que fizeram um pedido
+    ADICIONAR: Somente pedidos já entregues
+    '''
+
+    if apenasCadastrados:
+        result = planilhaClientes[dic.genero].value_counts()
+
+    else:
+        if somenteEntregues:
+            planilhaPedidos = planilhaPedidos.loc[planilhaPedidos[dic.status]
+                                                  == dic.entregue]
+        result = planilhaClientes.loc[planilhaClientes[dic.id].isin(
+            planilhaPedidos[dic.cliente_id])]
+        result = result[dic.genero].value_counts()
+
+    result = result.rename({
+        'F': 'Mulheres',
+        'M': 'Homens'
+    })
+    return get_response("Gênero dos clientes", "pie", result)
+
+
+def faixa_etaria(planilhaClientes: pd.DataFrame, passo: int = 5, **kwargs):
+    '''
+    RF_05 Faixa Etária OK
+    '''
+    index = []  # [0, 0, 0, 1, 1, 1, 2, 2, 2]
+    chaves = []  # ['0-2', '3-5', '6-8']
+    response = {}
+    count = 0
+
+    for i in range(0, 121, passo):
+        for j in range(passo):
+            index.append(count)
+
+        count += 1
+        chave = str(i)
+
+        if passo > 1:
+            chave += '-' + str(i + passo-1)
+
+        chaves.append(chave)
+
+    for cliente in range(len(planilhaClientes)):
+        dataNascimento = planilhaClientes[dic.data_nascimento][cliente]
+        idade = calcula_idade(dataNascimento)
+
+        if idade < 122:
+            pos = index[idade]
+            chave = chaves[pos]
+
+            if (chave in response) == False:
+                response[chave] = 0
+
+            response[chave] += 1
+
+    response = dict(sorted(response.items()))
+    return get_response("Faixa Etária", "bar", response)
+
+
+def cadastros_periodo(
+    planilhaClientes: pd.DataFrame,
+    dataInicial: str = None,
+    dataFinal: str = None,
+    tempo: str = "Meses",
+    **kwargs
+):
+    '''
+    RF_06 Períodos com mais cadastros em MESES
+    Geral               OK
+    Período definido    OK
+    Meses e Anos        OK
+    '''
+    # dataInicial = dataInicial.split('T')[0]
+    # dataFinal = dataFinal.split('T')[0]
+    response = {}
+    for cliente in range(len(planilhaClientes)):
+        dataCriacao = planilhaClientes[dic.data_cadastro][cliente].split()[0]
+
+        if tempo == "Meses":
+            dataCriacao = dataCriacao[:7]
+
+        elif tempo == "Anos":
+            dataCriacao = dataCriacao[:4]
+
+        if (dataInicial != None):
+            if entre_datas(dataInicial, dataCriacao, dataFinal, tempo):
+                if (dataCriacao in response) == False:
+                    response[dataCriacao] = 0
+                response[dataCriacao] += 1
+        else:
+            if (dataCriacao in response) == False:
+                response[dataCriacao] = 0
+            response[dataCriacao] += 1
+    return get_response("Cadastros por período", "line", response)
+
+
+def pedidos_por_estado(dados: pd.DataFrame, somenteEntregues: bool = False, **kwargs):
     '''
     RF__01 Quantidade de pedidos por estado   OK
     ADICIONAR Somente já entregues            OK
@@ -33,7 +140,7 @@ def pedidos_por_estado(dados: pd.DataFrame, somenteEntregues: bool = False):
     return get_response("Quantidade de pedidos por estado", "map", dados)
 
 
-def pedidos_por_cidade(dados: pd.DataFrame, somenteEntregues: bool = False):
+def pedidos_por_cidade(dados: pd.DataFrame, somenteEntregues: bool = False, **kwargs):
     '''
     RF__02 Quantidade de pedidos por cidade   OK
     ADICIONAR Somente já entregues            OK
@@ -45,7 +152,7 @@ def pedidos_por_cidade(dados: pd.DataFrame, somenteEntregues: bool = False):
     return get_response("10 cidades com mais pedidos", "horizontalBar", dados)
 
 
-def taxa_reincidencia(dados: pd.DataFrame, clientes: bool = False):
+def taxa_reincidencia(dados: pd.DataFrame, clientes: bool = False, **kwargs):
     ''' 
     RF_03 Reincidencia de compra
     'clientes' = False: Retorna a % de clientes que compraram mais de 1 vez.    OK
@@ -55,7 +162,7 @@ def taxa_reincidencia(dados: pd.DataFrame, clientes: bool = False):
     resultado = dados[dic.destinatario].value_counts()
 
     if clientes:
-        response = get_response("Clientes reincidentes", "table", resultado)
+        return get_response("Clientes reincidentes", "table", resultado)
 
     else:
         novos = 0
@@ -74,11 +181,13 @@ def taxa_reincidencia(dados: pd.DataFrame, clientes: bool = False):
 
     return get_response("Taxa de reincidência", "pie", response)
 
+
 def faturamento_periodo(
-    planilhaPedidos: pd.DataFrame, 
-    tempo: str = 'Meses', 
-    dataInicial: str = None, 
-    dataFinal: str = None
+    planilhaPedidos: pd.DataFrame,
+    tempo: str = 'Meses',
+    dataInicial: str = None,
+    dataFinal: str = None,
+    **kwargs
 ):
     '''
     RF_07 Faturamento por período
@@ -130,10 +239,11 @@ RF_08
 
 
 def cancelamentos_periodo(
-    planilhaPedidos: pd.DataFrame, 
-    dataInicial: str = None, 
-    dataFinal: str = None, 
-    tempo: str = "Meses"
+    planilhaPedidos: pd.DataFrame,
+    dataInicial: str = None,
+    dataFinal: str = None,
+    tempo: str = "Meses",
+    **kwargs
 ):
     '''
     RF_09 Cancelamento por período
@@ -163,7 +273,7 @@ def cancelamentos_periodo(
     return get_response("Cancelamentos por período", "line", response)
 
 
-def metodo_pagamento_aprovacoes(dados: pd.DataFrame):
+def metodo_pagamento_aprovacoes(dados: pd.DataFrame, **kwargs):
     '''
     RF__10 Taxa de cancelamento por método de pagamento
     RF__11 Preferência por método de pegamento
@@ -184,7 +294,7 @@ def metodo_pagamento_aprovacoes(dados: pd.DataFrame):
     return get_response("Preferência por método de pagamento", "bar", infoPagamentos)
 
 
-def metodo_envio_preferencia(planilhaPedidos: pd.DataFrame):
+def metodo_envio_preferencia(planilhaPedidos: pd.DataFrame, **kwargs):
     '''
     RF_12 Preferencia pelos meios de envio
     Total   
