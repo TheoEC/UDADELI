@@ -24,6 +24,7 @@ class AnalysisResource(Resource):
     def get(self):
         clientes_df = pd.DataFrame(session.get('clientes-df'))
         pedidos_df = pd.DataFrame(session.get('pedidos-df'))
+        produtos_df = pd.DataFrame(session.get('produtos-df'))
 
         if clientes_df.empty and pedidos_df.empty:
             abort(404, message="Missing data")
@@ -31,18 +32,11 @@ class AnalysisResource(Resource):
         args = parser.parse_args()
         column = args['column']
 
-        if column in pedidos_df.columns:
-            df = pedidos_df
-
-        elif column in clientes_df.columns:
-            df = clientes_df
-
-        else:
-            abort(400, message="Invalid column")
-
         data = get_column_data(
-            df,
-            column,
+            clientes_df=clientes_df,
+            pedidos_df=pedidos_df,
+            produtos_df=produtos_df,
+            column=column,
             somenteEntregues=args['somenteEntregues'],
             apenasCadastrados=args['apenasCadastrados'],
             clientes=args['clientes']

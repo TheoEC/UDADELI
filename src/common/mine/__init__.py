@@ -4,7 +4,13 @@ from ..dicionario import Dicionario as dic
 from . import functions
 
 
-def get_column_data(df: pd.DataFrame, column: str, **kwargs):
+def get_column_data(
+    clientes_df: pd.DataFrame,
+    pedidos_df: pd.DataFrame,
+    produtos_df: pd.DataFrame,
+    column: str,
+    **kwargs
+):
     switcher = {
         dic.estado_destino: functions.pedidos_por_estado,
         dic.cidade_destino: functions.pedidos_por_cidade,
@@ -15,11 +21,17 @@ def get_column_data(df: pd.DataFrame, column: str, **kwargs):
         dic.metodo_envio: functions.metodo_envio_preferencia,
         dic.genero: functions.genero_predominante,
         dic.data_nascimento: functions.faixa_etaria,
-        dic.data_cadastro: functions.cadastros_periodo
+        dic.data_cadastro: functions.cadastros_periodo,
+        'produtos': functions.produtos_mais_vendidos
     }
 
     func = switcher.get(column, lambda: "Invalid column")
 
-    data = func(df, **kwargs)
+    data = func(
+        clientes_df=clientes_df,
+        pedidos_df=pedidos_df,
+        produtos_df=produtos_df,
+        **kwargs
+    )
 
     return data

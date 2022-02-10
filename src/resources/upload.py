@@ -22,7 +22,9 @@ class UploadResource(Resource):
 
         if 'cliente-id' in df:
             session['pedidos-df'] = df.to_dict()
-        else:
+        elif 'email' in df:
             session['clientes-df'] = df.to_dict()
+        else:
+            session['produtos-df'] = df.to_dict()
 
         return {"message": "Data uploaded"}, 200
