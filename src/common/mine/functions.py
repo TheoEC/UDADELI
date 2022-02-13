@@ -38,9 +38,12 @@ def genero_predominante(
 
     if apenasCadastrados:
         result = clientes_df[dic.genero].value_counts()
+        title = 'Gênero dos clientes cadastrados'
 
     else:
+        title = 'Gênero dos clientes que fizeram pedidos'
         if somenteEntregues:
+            title = 'Gênero dos clientes que tiveram pedidos entregues'
             pedidos_df = pedidos_df.loc[pedidos_df[dic.status]
                                         == dic.entregue]
         result = clientes_df.loc[clientes_df[dic.id].isin(
@@ -51,7 +54,7 @@ def genero_predominante(
         'F': 'Mulheres',
         'M': 'Homens'
     })
-    return get_response("Gênero dos clientes", "pie", result)
+    return get_response(title, "pie", result)
 
 
 def faixa_etaria(clientes_df: pd.DataFrame, passo: int = 5, **kwargs):
@@ -151,7 +154,7 @@ def pedidos_por_cidade(pedidos_df: pd.DataFrame, somenteEntregues: bool = False,
     '''
     if somenteEntregues:
         pedidos_df = pedidos_df.loc[pedidos_df[dic.status] == dic.entregue]
-        title = "10 cidade com mais pedidos entregues"
+        title = "10 cidades com mais pedidos entregues"
     else:
         title = "10 cidades com mais pedidos"
 
