@@ -5,7 +5,6 @@ from datetime import timedelta
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY')
-    # UPLOAD_PATH = 'uploads'
 
     SESSION_TYPE = "redis"
     SESSION_PERMANENT = False
@@ -28,8 +27,12 @@ class TestingConfig(Config):
     TESTING = True
 
 
+class ProductionConfig(Config):
+    SESSION_REDIS = redis.from_url("redis://127.0.0.1:6379")
+
+
 env_config = {
     "development": DevelopmentConfig,
     "testing": TestingConfig,
-    # "production": ProductionConfig,
+    "production": ProductionConfig,
 }

@@ -1,5 +1,9 @@
 from src.api.app import api
-from . import upload, analysis
+from . import file, analysis
 
 api.add_resource(analysis.AnalysisResource, "/analysis")
-api.add_resource(upload.UploadResource, "/upload")
+api.add_resource(
+    file.FileResource,
+    "/planilhas",
+    "/planilhas/<spreadsheet_id>"
+)

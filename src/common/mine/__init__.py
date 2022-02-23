@@ -1,3 +1,4 @@
+from flask_restful import abort
 import pandas as pd
 
 from ..dicionario import Dicionario as dic
@@ -25,7 +26,10 @@ def get_column_data(
         'produtos': functions.produtos_mais_vendidos
     }
 
-    func = switcher.get(column, lambda: "Invalid column")
+    func = switcher.get(column)
+
+    if func is None:
+        abort(404, message="Não existe análise para essa coluna")
 
     data = func(
         clientes_df=clientes_df,

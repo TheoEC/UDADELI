@@ -1,26 +1,19 @@
-import pandas as pd
 import json
+import uuid
+import pandas as pd
+
+from flask_restful import abort
 
 from src.common.dicionario import Dicionario as dic
 from src.common.date import *
 
 
-def get_response(titulo, tipo_grafico, dados):
-    if type(dados) != dict:
-        dados = dados.to_dict()
-
-    result = []
-    for key, value in dados.items():
-        result.append({
-            "name": key,
-            "value": value
-        })
-
-    return {
-        "title": titulo,
-        "chart": tipo_grafico,
-        "result": result
-    }
+class ResponseDao(object):
+    def __init__(self, id, title, chart_type, data):
+        self.id = id
+        self.title = title
+        self.chart_type = chart_type
+        self.data = data
 
 
 def genero_predominante(
@@ -35,13 +28,19 @@ def genero_predominante(
     Quantidade de clientes que fizeram um pedido
     ADICIONAR: Somente pedidos já entregues
     '''
+    if clientes_df.empty:
+        abort(404, message="A planilha de clientes não foi carregada!")
 
     if apenasCadastrados:
         result = clientes_df[dic.genero].value_counts()
         title = 'Gênero dos clientes cadastrados'
 
     else:
+        if pedidos_df.empty:
+            abort(404, message="A planilha de pedidos não foi carregada!")
+
         title = 'Gênero dos clientes que fizeram pedidos'
+
         if somenteEntregues:
             title = 'Gênero dos clientes que tiveram pedidos entregues'
             pedidos_df = pedidos_df.loc[pedidos_df[dic.status]
@@ -54,13 +53,22 @@ def genero_predominante(
         'F': 'Mulheres',
         'M': 'Homens'
     })
-    return get_response(title, "pie", result)
+
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title=title,
+        chart_type="pie",
+        data=result.to_dict(),
+    )
 
 
 def faixa_etaria(clientes_df: pd.DataFrame, passo: int = 5, **kwargs):
     '''
     RF_05 Faixa Etária OK
     '''
+    if clientes_df.empty:
+        abort(404, message="A planilha de clientes não foi carregada!")
+
     index = []  # [0, 0, 0, 1, 1, 1, 2, 2, 2]
     chaves = []  # ['0-2', '3-5', '6-8']
     response = {}
@@ -92,7 +100,13 @@ def faixa_etaria(clientes_df: pd.DataFrame, passo: int = 5, **kwargs):
             response[chave] += 1
 
     response = dict(sorted(response.items()))
-    return get_response("Faixa Etária", "bar", response)
+
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title="Faixa Etária",
+        chart_type="bar",
+        data=response,
+    )
 
 
 def cadastros_periodo(
@@ -108,9 +122,11 @@ def cadastros_periodo(
     Período definido    OK
     Meses e Anos        OK
     '''
-    # dataInicial = dataInicial.split('T')[0]
-    # dataFinal = dataFinal.split('T')[0]
+    if clientes_df.empty:
+        abort(404, message="A planilha de clientes não foi carregada!")
+
     response = {}
+
     for cliente in range(len(clientes_df)):
         dataCriacao = clientes_df[dic.data_cadastro][cliente].split()[0]
 
@@ -129,7 +145,13 @@ def cadastros_periodo(
             if (dataCriacao in response) == False:
                 response[dataCriacao] = 0
             response[dataCriacao] += 1
-    return get_response("Cadastros por período", "line", response)
+
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title="Cadastros ao longo do tempo",
+        chart_type="line",
+        data=response,
+    )
 
 
 def pedidos_por_estado(pedidos_df: pd.DataFrame, somenteEntregues: bool = False, **kwargs):
@@ -137,6 +159,9 @@ def pedidos_por_estado(pedidos_df: pd.DataFrame, somenteEntregues: bool = False,
     RF__01 Quantidade de pedidos por estado   OK
     ADICIONAR Somente já entregues            OK
     '''
+    if pedidos_df.empty:
+        abort(404, message="A planilha de pedidos não foi carregada!")
+
     if somenteEntregues:
         pedidos_df = pedidos_df.loc[pedidos_df[dic.status] == dic.entregue]
         title = "Quantidade de pedidos entregues por estado"
@@ -144,7 +169,13 @@ def pedidos_por_estado(pedidos_df: pd.DataFrame, somenteEntregues: bool = False,
         title = "Quantidade de pedidos por estado"
 
     pedidos_df = pedidos_df[dic.estado_destino].value_counts()
-    return get_response(title, "map", pedidos_df)
+
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title=title,
+        chart_type="map",
+        data=pedidos_df.to_dict(),
+    )
 
 
 def pedidos_por_cidade(pedidos_df: pd.DataFrame, somenteEntregues: bool = False, **kwargs):
@@ -152,6 +183,9 @@ def pedidos_por_cidade(pedidos_df: pd.DataFrame, somenteEntregues: bool = False,
     RF__02 Quantidade de pedidos por cidade   OK
     ADICIONAR Somente já entregues            OK
     '''
+    if pedidos_df.empty:
+        abort(404, message="A planilha de pedidos não foi carregada!")
+
     if somenteEntregues:
         pedidos_df = pedidos_df.loc[pedidos_df[dic.status] == dic.entregue]
         title = "10 cidades com mais pedidos entregues"
@@ -159,7 +193,13 @@ def pedidos_por_cidade(pedidos_df: pd.DataFrame, somenteEntregues: bool = False,
         title = "10 cidades com mais pedidos"
 
     pedidos_df = pedidos_df[dic.cidade_destino].value_counts().head(10)
-    return get_response(title, "horizontalBar", pedidos_df)
+
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title=title,
+        chart_type="horizontalBar",
+        data=pedidos_df.to_dict(),
+    )
 
 
 def taxa_reincidencia(pedidos_df: pd.DataFrame, clientes: bool = False, **kwargs):
@@ -169,10 +209,18 @@ def taxa_reincidencia(pedidos_df: pd.DataFrame, clientes: bool = False, **kwargs
     'clientes' = True : Retorna o json de clientes que compraram mais de 1 vez. OK
     Exemplo json: {"nome" : QtdCompras}
     '''
+    if pedidos_df.empty:
+        abort(404, message="A planilha de pedidos não foi carregada!")
+
     resultado = pedidos_df[dic.destinatario].value_counts()
 
     if clientes:
-        return get_response("Clientes reincidentes", "table", resultado)
+        return ResponseDao(
+            id=uuid.uuid4(),
+            title="Clientes reincidentes",
+            chart_type="table",
+            data=resultado.to_dict(),
+        )
 
     else:
         novos = 0
@@ -189,7 +237,12 @@ def taxa_reincidencia(pedidos_df: pd.DataFrame, clientes: bool = False, **kwargs
             "Clientes que voltaram a comprar": reincidentes,
         }
 
-    return get_response("Taxa de reincidência", "pie", response)
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title="Taxa de reincidência",
+        chart_type="pie",
+        data=response,
+    )
 
 
 def faturamento_periodo(
@@ -206,6 +259,9 @@ def faturamento_periodo(
     Por dias    OK
     Truncar     FAZER
     '''
+    if pedidos_df.empty:
+        abort(404, message="A planilha de pedidos não foi carregada!")
+
     response = {}
     # dataInicial = dataInicial.split('T')[0]
     # dataFinal = dataFinal.split('T')[0]
@@ -240,7 +296,12 @@ def faturamento_periodo(
 
                 response[chave] += valorPedido
 
-    return get_response("Faturamento por período", "line", response)
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title="Faturamento ao longo do tempo",
+        chart_type="line",
+        data=response,
+    )
 
 
 '''
@@ -260,6 +321,9 @@ def cancelamentos_periodo(
     '''
     # dataInicial = dataInicial.split('T')[0]
     # dataFinal = dataFinal.split('T')[0]
+    if pedidos_df.empty:
+        abort(404, message="A planilha de pedidos não foi carregada!")
+
     response = {}
     for pedido in range(len(pedidos_df)):
         dataCriacao = pedidos_df[dic.data_criacao][pedido].split()[0]
@@ -280,7 +344,13 @@ def cancelamentos_periodo(
                 if (dataCriacao in response) == False:
                     response[dataCriacao] = 0
                 response[dataCriacao] += 1
-    return get_response("Cancelamentos por período", "line", response)
+
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title="Cancelamentos ao longo do tempo",
+        chart_type="line",
+        data=response,
+    )
 
 
 def metodo_pagamento_aprovacoes(pedidos_df: pd.DataFrame, **kwargs):
@@ -288,17 +358,17 @@ def metodo_pagamento_aprovacoes(pedidos_df: pd.DataFrame, **kwargs):
     RF__10 Taxa de cancelamento por método de pagamento
     RF__11 Preferência por método de pegamento
     '''
+    if pedidos_df.empty:
+        abort(404, message="A planilha de pedidos não foi carregada!")
+
     infoPagamentos = pedidos_df[dic.tipo_pagamento].value_counts()
-    # infoPagamentos = {}
 
-    # for tipo in meiosPagamento:
-    #     qtdUsos = len(dados.loc[dados[dic.tipo_pagamento] == tipo])
-    #     qtdAprovados = len(dados.loc[(dados[dic.tipo_pagamento] == tipo) & (
-    #         dados[dic.status] == dic.entregue)])
-
-    #     infoPagamentos[tipo] = [qtdUsos, qtdAprovados]
-
-    return get_response("Preferência por método de pagamento", "pie", infoPagamentos)
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title="Preferência por método de pagamento",
+        chart_type="pie",
+        data=infoPagamentos.to_dict(),
+    )
 
 
 def metodo_envio_preferencia(pedidos_df: pd.DataFrame, **kwargs):
@@ -307,16 +377,27 @@ def metodo_envio_preferencia(pedidos_df: pd.DataFrame, **kwargs):
     Total   
     Melhoria: Por período FAZER
     '''
-    response = {}
+    if pedidos_df.empty:
+        abort(404, message="A planilha de pedidos não foi carregada!")
 
     pedidos_df = pedidos_df.loc[pedidos_df[dic.status]
                                 == dic.entregue]
     pedidos_df = pedidos_df[dic.metodo_envio].value_counts()
-    return get_response("Preferência por método de envio", "pie", pedidos_df)
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title="Preferência por método de envio",
+        chart_type="pie",
+        data=pedidos_df.to_dict(),
+    )
 
 
 def produtos_mais_vendidos(pedidos_df: pd.DataFrame, produtos_df: pd.DataFrame, **kwargs):
-    df = pedidos_df
+    if produtos_df.empty:
+        abort(404, message="A planilha de produtos não foi carregada!")
+
+    if pedidos_df.empty:
+        abort(404, message="A planilha de pedidos não foi carregada!")
+
     pedido_itens = pedidos_df['pedido-itens'].apply(json.loads)
 
     df1 = (pd.concat({k: pd.DataFrame(v)
@@ -328,4 +409,9 @@ def produtos_mais_vendidos(pedidos_df: pd.DataFrame, produtos_df: pd.DataFrame, 
     result = produtos.merge(vendas, left_on='id', right_on='produto_id')
     result = result['nome'].value_counts().head(10)
 
-    return get_response("Produtos mais vendidos", "horizontalBar", result)
+    return ResponseDao(
+        id=uuid.uuid4(),
+        title="10 produtos mais vendidos",
+        chart_type="horizontalBar",
+        data=result.to_dict(),
+    )
