@@ -5,5 +5,5 @@ api.add_resource(analysis.AnalysisResource, "/analysis")
 api.add_resource(
     file.FileResource,
     "/planilhas",
-    "/planilhas/<spreadsheet_id>"
+    "/planilhas/<filename>"
 )

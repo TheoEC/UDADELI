@@ -1,53 +1,46 @@
 import os
 
-import pandas as pd
-from flask import current_app, request, session
-from flask_restful import abort, Resource
+from flask import current_app
+from flask_restful import reqparse, Resource
+
+from werkzeug.utils import secure_filename
+from werkzeug.datastructures import FileStorage
+
+parser = reqparse.RequestParser()
+parser.add_argument('file', type=FileStorage, location='files')
+
+ALLOWED_EXTENSIONS = ['xlsx']
 
 
-def abort_if_spreadsheet_doesnt_exist(spreadsheet_id):
-    if spreadsheet_id not in session:
-        abort(404, message=f"A planilha de {spreadsheet_id} não foi carregada")
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 class FileResource(Resource):
     def post(self):
-        if "file" not in request.files:
-            return "No file uploaded"
+        args = parser.parse_args()
 
-        file = request.files["file"]
-        filename = file.filename
+        file = args["file"]
 
-        if filename != "":
-            file_ext = os.path.splitext(filename)[1]
-            if file_ext not in current_app.config["UPLOAD_EXTENSIONS"]:
-                abort(400, message="O tipo do arquivo deve ser '.xlsx'")
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(
+                current_app.config['UPLOAD_PATH'], filename))
 
-        df = pd.read_excel(file)
+            if 'pedidos' in filename:
+                name = 'pedidos'
 
-        if 'pedidos' in filename:
-            session['pedidos'] = df.to_dict()
-            name = 'pedidos'
+            elif 'clientes' in filename:
+                name = 'clientes'
 
-        elif 'clientes' in filename:
-            session['clientes'] = df.to_dict()
-            name = 'clientes'
+            elif 'produtos' in filename:
+                name = 'produtos'
 
-        elif 'produtos' in filename:
-            session['produtos'] = df.to_dict()
-            name = 'produtos'
-
-        else:
             return {
-                "message": "Você deve enviar as planilhas de pedidos, clientes ou produtos"
-            }, 400
+                "id": filename,
+                "message": f"O arquivo '{filename}' foi carregado com sucesso",
+            }, 200, {'Set-Cookie': f'{name}-df={filename}'}
 
-        return {
-            "id": name,
-            "message": f"A planilha de {name} foi carregada com sucesso",
-        }, 200
-
-    def delete(self, spreadsheet_id):
-        abort_if_spreadsheet_doesnt_exist(spreadsheet_id)
-        del session[spreadsheet_id]
-        return '', 204
+    def delete(self, filename):
+        os.remove(os.path.join(current_app.config['UPLOAD_PATH'], filename))
+        return f'A planilha de {filename} foi deletada', 204

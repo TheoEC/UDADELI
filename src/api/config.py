@@ -1,18 +1,5 @@
-import os
-import redis
-from datetime import timedelta
-
-
 class Config:
-    SECRET_KEY = os.getenv('SECRET_KEY')
-
-    SESSION_TYPE = "redis"
-    SESSION_PERMANENT = False
-    SESSION_USE_SIGNER = True
-    SESSION_REDIS = redis.from_url("redis://127.0.0.1:6379")
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=1)
-
-    UPLOAD_EXTENSIONS = ".xlsx"
+    UPLOAD_PATH = "uploads"
 
     @staticmethod
     def init_app(app):
@@ -28,7 +15,7 @@ class TestingConfig(Config):
 
 
 class ProductionConfig(Config):
-    SESSION_REDIS = redis.from_url("redis://127.0.0.1:6379")
+    DEBUG = False
 
 
 env_config = {
